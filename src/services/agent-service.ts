@@ -19,7 +19,7 @@ export async function streamAgentResponse(
   await saveMessage(threadId, "user", userMessage);
 
   const graph = await getAgentGraph();
-  const config = { configurable: { thread_id: threadId } };
+  const config = { configurable: { thread_id: threadId, user_id: userId } };
 
   let assistantContent = "";
   let currentNode = "";
@@ -39,6 +39,9 @@ export async function streamAgentResponse(
 
           if ("agent" in updates) {
             onEvent({ type: "node_end", data: { node: "agent" } });
+          }
+          if ("retriever" in updates) {
+            onEvent({ type: "node_end", data: { node: "retriever" } });
           }
           if ("tools" in updates) {
             onEvent({ type: "node_end", data: { node: "tools" } });
@@ -129,7 +132,7 @@ export async function resumeAgentWithApproval(
   await ensureThreadAccess(threadId, userId);
 
   const graph = await getAgentGraph();
-  const config = { configurable: { thread_id: threadId } };
+  const config = { configurable: { thread_id: threadId, user_id: userId } };
 
   let assistantContent = "";
 

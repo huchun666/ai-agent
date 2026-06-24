@@ -31,3 +31,51 @@ model Message {
   @@index([threadId, createdAt])
   @@map("messages")
 }
+
+model Document {
+  id           String          @id @default(uuid())
+  userId       String          @map("user_id")
+  filename     String
+  mimeType     String          @map("mime_type")
+  size         Int
+  content      String?         @db.Text
+  status       String          @default("pending")
+  errorMessage String?         @map("error_message") @db.Text
+  chunkCount   Int             @default(0) @map("chunk_count")
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @updatedAt @map("updated_at")
+  chunks       DocumentChunk[]
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("documents")
+}
+
+model DocumentChunk {
+  id         String   @id @default(uuid())
+  documentId String   @map("document_id")
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  content    String   @db.Text
+  chunkIndex Int      @map("chunk_index")
+  tokenCount Int?     @map("token_count")
+
+  @@index([documentId, chunkIndex])
+  @@map("document_chunks")
+}
+
+model McpServer {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  name      String
+  transport String
+  command   String?
+  args      Json?
+  url       String?
+  headers   Json?
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([userId, name])
+  @@index([userId, enabled])
+  @@map("mcp_servers")
+}

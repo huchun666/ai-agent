@@ -2,32 +2,83 @@ import {
   SystemMessage,
   ToolMessage,
   isAIMessage,
+  isHumanMessage,
 } from "@langchain/core/messages";
+import type { RunnableConfig } from "@langchain/core/runnables";
 import { ToolNode } from "@langchain/langgraph/prebuilt";
 import { interrupt } from "@langchain/langgraph";
 import { createDeepSeekModel } from "@/lib/llm/deepseek";
-import { agentTools, SYSTEM_PROMPT } from "@/lib/agent/tools";
-import { REQUIRES_APPROVAL, type AgentGraphState } from "@/lib/agent/state";
+import { agentTools, BASE_SYSTEM_PROMPT } from "@/lib/agent/tools";
+import {
+  isApprovalRequired,
+  type AgentGraphState,
+} from "@/lib/agent/state";
+import { getAllToolsForUser, getUserIdFromConfig } from "@/lib/agent/toolkit";
+import {
+  retrieveContext,
+  formatRetrievedDocs,
+} from "@/lib/rag/retriever";
 
-const toolNode = new ToolNode(agentTools);
+export async function retrieverNode(
+  state: AgentGraphState,
+  config?: RunnableConfig
+): Promise<Partial<AgentGraphState>> {
+  const userId = getUserIdFromConfig(config);
 
-function getBoundModel() {
-  return createDeepSeekModel().bindTools(agentTools);
+  const lastHuman = [...state.messages]
+    .reverse()
+    .find((m) => isHumanMessage(m));
+
+  if (!lastHuman) {
+    return { retrievedDocs: [] };
+  }
+
+  const query =
+    typeof lastHuman.content === "string"
+      ? lastHuman.content
+      : JSON.stringify(lastHuman.content);
+
+  const docs = await retrieveContext(userId, query);
+  return { retrievedDocs: docs };
 }
 
 export async function agentNode(
-  state: AgentGraphState
+  state: AgentGraphState,
+  config?: RunnableConfig
 ): Promise<Partial<AgentGraphState>> {
-  const response = await getBoundModel().invoke([
-    new SystemMessage(SYSTEM_PROMPT),
+  const userId = getUserIdFromConfig(config);
+  const tools = await getAllToolsForUser(userId);
+  const model = createDeepSeekModel().bindTools(tools);
+
+  const ragContext = formatRetrievedDocs(state.retrievedDocs);
+  const builtinNames = new Set<string>(agentTools.map((t) => t.name));
+  const mcpToolNames = tools
+    .map((t) => t.name)
+    .filter((n) => !builtinNames.has(n));
+
+  let systemPrompt = BASE_SYSTEM_PROMPT;
+  if (ragContext) {
+    systemPrompt += `\n\n## 知识库上下文\n${ragContext}`;
+  }
+  if (mcpToolNames.length > 0) {
+    systemPrompt += `\n\n## MCP 扩展工具\n你还可以使用以下 MCP 工具：\n${mcpToolNames.map((n) => `- ${n}`).join("\n")}`;
+  }
+
+  const response = await model.invoke([
+    new SystemMessage(systemPrompt),
     ...state.messages,
   ]);
   return { messages: [response] };
 }
 
 export async function toolsNode(
-  state: AgentGraphState
+  state: AgentGraphState,
+  config?: RunnableConfig
 ): Promise<Partial<AgentGraphState>> {
+  const userId = getUserIdFromConfig(config);
+  const tools = await getAllToolsForUser(userId);
+  const toolNode = new ToolNode(tools);
+
   const lastMessage = state.messages.at(-1);
 
   if (!lastMessage || !isAIMessage(lastMessage) || !lastMessage.tool_calls?.length) {
@@ -41,7 +92,7 @@ export async function toolsNode(
     if (!toolId) continue;
 
     if (
-      REQUIRES_APPROVAL.has(toolCall.name) &&
+      isApprovalRequired(toolCall.name) &&
       !approvedIds.includes(toolId)
     ) {
       const decision = interrupt({
@@ -108,23 +159,9 @@ export function shouldRetryTools(state: AgentGraphState): "tools" | "agent" {
   const pendingApproval = lastMessage.tool_calls.some(
     (tc) =>
       tc.id &&
-      REQUIRES_APPROVAL.has(tc.name) &&
+      isApprovalRequired(tc.name) &&
       !state.approvedToolIds.includes(tc.id)
   );
 
   return pendingApproval ? "tools" : "agent";
-}
-
-export function getLastAIMessageContent(state: AgentGraphState): string {
-  for (let i = state.messages.length - 1; i >= 0; i--) {
-    const msg = state.messages[i];
-    if (isAIMessage(msg)) {
-      const content =
-        typeof msg.content === "string"
-          ? msg.content
-          : JSON.stringify(msg.content);
-      return content;
-    }
-  }
-  return "";
 }

@@ -2,6 +2,7 @@ import { END, START, StateGraph } from "@langchain/langgraph";
 import { GraphState } from "@/lib/agent/state";
 import {
   agentNode,
+  retrieverNode,
   shouldContinue,
   shouldRetryTools,
   toolsNode,
@@ -14,9 +15,11 @@ async function buildGraph() {
   const checkpointer = await getCheckpointer();
 
   const workflow = new StateGraph(GraphState)
+    .addNode("retriever", retrieverNode)
     .addNode("agent", agentNode)
     .addNode("tools", toolsNode)
-    .addEdge(START, "agent")
+    .addEdge(START, "retriever")
+    .addEdge("retriever", "agent")
     .addConditionalEdges("agent", shouldContinue, {
       tools: "tools",
       __end__: END,
@@ -34,4 +37,8 @@ export async function getAgentGraph() {
     compiledGraph = await buildGraph();
   }
   return compiledGraph;
+}
+
+export function resetAgentGraph() {
+  compiledGraph = null;
 }

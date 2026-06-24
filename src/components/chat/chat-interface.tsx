@@ -3,7 +3,7 @@
 import { AgentFeed } from "@/components/chat/agent-feed";
 import { MessageInput } from "@/components/chat/message-input";
 import { MessageList } from "@/components/chat/message-list";
-import { ThreadSidebar } from "@/components/chat/thread-sidebar";
+import { AppSidebar } from "@/components/layout/app-sidebar";
 import { ToolApprovalDialog } from "@/components/chat/tool-approval-dialog";
 import { useAgentChat } from "@/hooks/use-agent-chat";
 import { useEffect, useRef } from "react";
@@ -37,7 +37,7 @@ export function ChatInterface({ threadId: initialThreadId }: ChatInterfaceProps)
 
   return (
     <div className="flex h-screen">
-      <ThreadSidebar
+      <AppSidebar
         threads={threads}
         onNewChat={createNewChat}
         onDeleteThread={deleteThread}
@@ -47,7 +47,7 @@ export function ChatInterface({ threadId: initialThreadId }: ChatInterfaceProps)
         <header className="flex items-center justify-between border-b border-zinc-200 px-6 py-3 dark:border-zinc-800">
           <div>
             <h1 className="text-sm font-medium">通用 AI 助手</h1>
-            <p className="text-xs text-zinc-500">DeepSeek · LangGraph · 工具审批</p>
+            <p className="text-xs text-zinc-500">DeepSeek · LangGraph · RAG · MCP</p>
           </div>
         </header>
 
