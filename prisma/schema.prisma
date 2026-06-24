@@ -1,0 +1,33 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Thread {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  title     String?
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  messages  Message[]
+
+  @@index([userId, updatedAt(sort: Desc)])
+  @@map("threads")
+}
+
+model Message {
+  id        String   @id @default(uuid())
+  threadId  String   @map("thread_id")
+  thread    Thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  role      String
+  content   String   @db.Text
+  metadata  Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([threadId, createdAt])
+  @@map("messages")
+}
