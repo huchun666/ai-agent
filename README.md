@@ -50,6 +50,8 @@ docker compose up -d
 npm run db:push
 ```
 
+> **注意**：`db:push` 只同步 Prisma schema 中的表，会删除 `public` 下多余的表。LangGraph checkpoint 表存放在独立 schema `langgraph`，不会被 Prisma 影响。若 checkpoint 报错，执行 `npm run db:setup-checkpoints`。
+
 pgvector 扩展和 embedding 列在首次索引文档时自动创建。
 
 ### 4. 启动开发服务器

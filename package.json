@@ -10,6 +10,7 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
+    "db:setup-checkpoints": "node scripts/setup-checkpoints.mjs",
     "postinstall": "prisma generate"
   },
   "dependencies": {

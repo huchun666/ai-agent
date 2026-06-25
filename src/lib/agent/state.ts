@@ -19,7 +19,11 @@ export const GraphState = Annotation.Root({
 
 export type AgentGraphState = typeof GraphState.State;
 
-export const REQUIRES_APPROVAL = new Set(["write_note", "delete_note"]);
+export const REQUIRES_APPROVAL = new Set([
+  "write_note",
+  "delete_note",
+  "perform_action",
+]);
 
 export function isApprovalRequired(toolName: string): boolean {
   if (REQUIRES_APPROVAL.has(toolName)) return true;

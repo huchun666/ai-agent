@@ -1,7 +1,9 @@
 import { PostgresSaver } from "@langchain/langgraph-checkpoint-postgres";
 
+/** LangGraph checkpoint 专用 schema，避免被 Prisma db push 误删 */
+const CHECKPOINT_SCHEMA = "langgraph";
+
 let checkpointer: PostgresSaver | null = null;
-let setupPromise: Promise<void> | null = null;
 
 export async function getCheckpointer(): Promise<PostgresSaver> {
   const url = process.env.DATABASE_URL;
@@ -10,16 +12,12 @@ export async function getCheckpointer(): Promise<PostgresSaver> {
   }
 
   if (!checkpointer) {
-    checkpointer = PostgresSaver.fromConnString(url);
-  }
-
-  if (!setupPromise) {
-    setupPromise = checkpointer.setup().catch((err) => {
-      setupPromise = null;
-      throw err;
+    checkpointer = PostgresSaver.fromConnString(url, {
+      schema: CHECKPOINT_SCHEMA,
     });
   }
 
-  await setupPromise;
+  // setup 幂等：表不存在时创建，已存在时仅跑增量 migration
+  await checkpointer.setup();
   return checkpointer;
 }
