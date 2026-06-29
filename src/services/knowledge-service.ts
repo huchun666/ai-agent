@@ -65,6 +65,7 @@ export async function createDocumentFromUpload(
   };
 }
 
+// 把已上传的文档文本切成块、生成向量 embedding，并写入数据库，使文档可被 RAG 检索。
 export async function ingestDocument(
   documentId: string,
   userId: string

@@ -42,6 +42,7 @@ export async function ensurePgVectorSetup(): Promise<void> {
   }
 }
 
+// 把某个文档分块（chunk）的向量 embedding 写入 PostgreSQL 的 document_chunks 表，供后续 pgvector 相似度检索使用。
 export async function upsertChunkEmbedding(
   chunkId: string,
   embedding: number[]
